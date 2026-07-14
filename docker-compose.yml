@@ -1,0 +1,10 @@
+services:
+  telegram-claude-bridge:
+    build: .
+    container_name: telegram-claude-bridge
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - /home/chiel:/home/chiel
