@@ -42,6 +42,28 @@ To let the bot read/write your Notion workspace:
 This runs the official `@notionhq/notion-mcp-server` as a local stdio process inside the
 container — no OAuth flow, independent of your claude.ai account's own Notion connection.
 
+## Skills/plugins in the bot
+
+The bot automatically loads the same Claude Code skills/plugins you've installed here in the
+terminal via the plugin marketplace (`~/.claude/plugins/installed_plugins.json`) — no separate
+installation or sync needed. Add or update a plugin via `/plugin install`/`/plugin update` in
+the terminal, and the bot picks it up automatically on the next message, without a rebuild.
+
+Excluded by default: `caveman`. That plugin activates caveman speech mode by default at session
+start and shares its mode flag (`~/.claude/.caveman-active`) with your terminal sessions on this
+machine — including it in the bot could therefore affect your terminal's caveman mode and vice
+versa.
+
+Adjust the exclusion list via `EXCLUDED_PLUGINS` in `.env` (comma-separated plugin names, the
+part before the `@` in `installed_plugins.json`), for example:
+
+```
+EXCLUDED_PLUGINS=caveman,impeccable
+```
+
+Set it explicitly to empty (`EXCLUDED_PLUGINS=`) to include `caveman` too. After changing
+`.env`: `docker compose up -d --build`.
+
 ## Logs
 
 ```bash

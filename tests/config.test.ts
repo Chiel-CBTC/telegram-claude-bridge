@@ -66,4 +66,21 @@ describe('loadConfig', () => {
     const config = loadConfig(env);
     expect(config.notionToken).toBe('ntn_test123');
   });
+
+  it('defaults excludedPlugins to ["caveman"] when EXCLUDED_PLUGINS is not set', () => {
+    const config = loadConfig(validEnv);
+    expect(config.excludedPlugins).toEqual(['caveman']);
+  });
+
+  it('parses a comma-separated EXCLUDED_PLUGINS, trimming whitespace', () => {
+    const env = { ...validEnv, EXCLUDED_PLUGINS: 'caveman, impeccable ,skill-creator' };
+    const config = loadConfig(env);
+    expect(config.excludedPlugins).toEqual(['caveman', 'impeccable', 'skill-creator']);
+  });
+
+  it('returns an empty array when EXCLUDED_PLUGINS is explicitly set to an empty string', () => {
+    const env = { ...validEnv, EXCLUDED_PLUGINS: '' };
+    const config = loadConfig(env);
+    expect(config.excludedPlugins).toEqual([]);
+  });
 });

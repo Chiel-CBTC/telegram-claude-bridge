@@ -30,6 +30,7 @@ const claudeSessionRunner = createClaudeSessionRunner({
     notifyApprovalNeeded(bot, chatId, approval);
   },
   notionToken: config.notionToken,
+  excludedPlugins: config.excludedPlugins,
 });
 
 bot = createBot(config, claudeSessionRunner, approvalBroker);

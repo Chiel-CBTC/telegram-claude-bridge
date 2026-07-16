@@ -1,9 +1,12 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
 import type { McpStdioServerConfig } from '@anthropic-ai/claude-agent-sdk';
+import os from 'node:os';
+import path from 'node:path';
 import type { SessionStore } from './sessionStore.js';
 import type { ApprovalBroker } from './approvals.js';
 import { decidePermission } from './permissionDecider.js';
 import { createPerKeySerializer } from './perKeySerializer.js';
+import { loadPluginConfigs } from './plugins.js';
 
 export interface ClaudeSessionRunner {
   sendMessage(chatId: number, userMessage: string): Promise<string>;
@@ -20,6 +23,10 @@ export interface CreateClaudeSessionRunnerDeps {
   // gets Notion access via the official stdio MCP server; when unset, Notion tools
   // are simply not offered (no error).
   notionToken?: string;
+  // Plugin names (matched against the part before '@' in
+  // installed_plugins.json) to exclude from the bot session. Loaded via
+  // loadConfig()'s excludedPlugins; defaults to ['caveman'] there.
+  excludedPlugins?: string[];
 }
 
 function buildMcpServers(deps: CreateClaudeSessionRunnerDeps): Record<string, McpStdioServerConfig> | undefined {
@@ -37,6 +44,11 @@ function buildMcpServers(deps: CreateClaudeSessionRunnerDeps): Record<string, Mc
 
 export function createClaudeSessionRunner(deps: CreateClaudeSessionRunnerDeps): ClaudeSessionRunner {
   const mcpServers = buildMcpServers(deps);
+  const excludedPlugins = deps.excludedPlugins ?? [];
+  // installed_plugins.json is owned by the plugin marketplace CLI (the same
+  // one used interactively in a terminal on this host); reading it fresh on
+  // every message means updates there take effect without a bot rebuild.
+  const installedPluginsPath = path.join(os.homedir(), '.claude', 'plugins', 'installed_plugins.json');
   // Without this, a second Telegram message arriving while the first is still
   // being processed (e.g. waiting on a slow tool call) spawns a *second*
   // `claude --resume <same session>` subprocess concurrently — observed in
@@ -46,6 +58,7 @@ export function createClaudeSessionRunner(deps: CreateClaudeSessionRunnerDeps): 
 
   async function sendMessageNow(chatId: number, userMessage: string): Promise<string> {
     const existingSessionId = deps.sessionStore.get(chatId);
+    const plugins = loadPluginConfigs(installedPluginsPath, excludedPlugins);
 
     const stream = query({
       prompt: userMessage,
@@ -53,6 +66,7 @@ export function createClaudeSessionRunner(deps: CreateClaudeSessionRunnerDeps): 
         cwd: deps.workingDir,
         model: deps.model,
         ...(mcpServers ? { mcpServers } : {}),
+        ...(plugins.length > 0 ? { plugins } : {}),
         // Isolate from the host user's own ~/.claude/settings.json (and any
         // project/local settings). Without this, a permissive rule there
         // (e.g. Bash(*) under an "auto" defaultMode) resolves tool calls
