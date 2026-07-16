@@ -1,4 +1,5 @@
 import { query } from '@anthropic-ai/claude-agent-sdk';
+import type { McpStdioServerConfig } from '@anthropic-ai/claude-agent-sdk';
 import type { SessionStore } from './sessionStore.js';
 import type { ApprovalBroker } from './approvals.js';
 import { decidePermission } from './permissionDecider.js';
@@ -20,7 +21,7 @@ export interface CreateClaudeSessionRunnerDeps {
   notionToken?: string;
 }
 
-function buildMcpServers(deps: CreateClaudeSessionRunnerDeps): Record<string, { command: string; args: string[]; env: Record<string, string> }> | undefined {
+function buildMcpServers(deps: CreateClaudeSessionRunnerDeps): Record<string, McpStdioServerConfig> | undefined {
   if (!deps.notionToken) {
     return undefined;
   }
