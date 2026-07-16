@@ -4,7 +4,7 @@ const DEFAULT_EXCLUDED_PLUGINS = ['caveman'];
 
 function parseExcludedPlugins(raw: string | undefined): string[] {
   if (raw === undefined) {
-    return DEFAULT_EXCLUDED_PLUGINS;
+    return [...DEFAULT_EXCLUDED_PLUGINS];
   }
   return raw
     .split(',')

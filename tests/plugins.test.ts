@@ -84,6 +84,35 @@ describe('loadPluginConfigs', () => {
     ]);
   });
 
+  it('returns an empty array when a plugin entry list is not an array', () => {
+    // Simulates a marketplace CLI version bump changing the shape of a
+    // plugin's value from an array of entries to something else (here: an
+    // object). Iterating a non-array with for-of throws a TypeError, which
+    // must be caught rather than escaping loadPluginConfigs.
+    fs.writeFileSync(
+      testFilePath,
+      JSON.stringify({ version: 2, plugins: { 'foo@bar': { installPath: '/wrong/shape' } } }),
+      'utf-8'
+    );
+
+    expect(loadPluginConfigs(testFilePath, [])).toEqual([]);
+  });
+
+  it('returns an empty array when plugins itself is not an object', () => {
+    fs.writeFileSync(testFilePath, JSON.stringify({ version: 2, plugins: 'not-an-object' }), 'utf-8');
+
+    expect(loadPluginConfigs(testFilePath, [])).toEqual([]);
+  });
+
+  it('returns an empty array when the top-level parsed JSON is not an object', () => {
+    // Valid JSON, but `null` at the top level means `parsed.plugins` throws
+    // a TypeError ("Cannot read properties of null"). This exercises the
+    // widened try/catch itself, not just the Array.isArray guard.
+    fs.writeFileSync(testFilePath, 'null', 'utf-8');
+
+    expect(loadPluginConfigs(testFilePath, [])).toEqual([]);
+  });
+
   it('excludes nothing when excludedNames is empty or omitted', () => {
     writeFixture({
       'caveman@caveman': [

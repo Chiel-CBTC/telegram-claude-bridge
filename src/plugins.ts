@@ -29,20 +29,30 @@ export function loadPluginConfigs(
     return [];
   }
 
-  const excluded = new Set(excludedNames);
-  const paths = new Set<string>();
+  try {
+    const excluded = new Set(excludedNames);
+    const paths = new Set<string>();
 
-  for (const [key, entries] of Object.entries(parsed.plugins ?? {})) {
-    const pluginName = key.split('@')[0];
-    if (excluded.has(pluginName)) {
-      continue;
-    }
-    for (const entry of entries) {
-      if (entry.installPath) {
-        paths.add(entry.installPath);
+    for (const [key, entries] of Object.entries(parsed.plugins ?? {})) {
+      const pluginName = key.split('@')[0];
+      if (excluded.has(pluginName)) {
+        continue;
+      }
+      if (!Array.isArray(entries)) {
+        continue;
+      }
+      for (const entry of entries) {
+        if (entry && typeof entry === 'object' && entry.installPath) {
+          paths.add(entry.installPath);
+        }
       }
     }
-  }
 
-  return [...paths].map((path) => ({ type: 'local' as const, path }));
+    return [...paths].map((path) => ({ type: 'local' as const, path }));
+  } catch {
+    console.warn(
+      `plugins: onverwachte structuur in ${installedPluginsPath}, laad geen plugins`
+    );
+    return [];
+  }
 }
