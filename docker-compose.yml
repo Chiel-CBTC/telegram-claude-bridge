@@ -3,6 +3,11 @@ services:
     build: .
     container_name: telegram-claude-bridge
     restart: unless-stopped
+    # PID 1 (node) doesn't reap zombie children on its own — orphaned/finished
+    # subprocesses (e.g. a git call spawned by the claude CLI's Bash tool) pile
+    # up as <defunct> entries otherwise. `init: true` gives the container a
+    # real init process (tini) that reaps them.
+    init: true
     env_file:
       - .env
     volumes:
