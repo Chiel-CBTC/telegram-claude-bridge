@@ -8,6 +8,7 @@ export interface Config {
   claudeModel: string;
   approvalTimeoutMs: number;
   sessionStorePath: string;
+  notionToken?: string;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -38,5 +39,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     claudeModel: env.CLAUDE_MODEL?.trim() || 'claude-sonnet-5',
     approvalTimeoutMs: env.APPROVAL_TIMEOUT_MS ? Number(env.APPROVAL_TIMEOUT_MS) : 15 * 60 * 1000,
     sessionStorePath: env.SESSION_STORE_PATH?.trim() || './data/sessions.json',
+    notionToken: env.NOTION_TOKEN?.trim() || undefined,
   };
 }

@@ -14,9 +14,28 @@ export interface CreateClaudeSessionRunnerDeps {
   sessionStore: SessionStore;
   approvalBroker: ApprovalBroker;
   notifyApprovalNeeded: (chatId: number, approval: { id: string; description: string }) => void;
+  // Internal integration token from notion.so/my-integrations. When set, the bot
+  // gets Notion access via the official stdio MCP server; when unset, Notion tools
+  // are simply not offered (no error).
+  notionToken?: string;
+}
+
+function buildMcpServers(deps: CreateClaudeSessionRunnerDeps): Record<string, { command: string; args: string[]; env: Record<string, string> }> | undefined {
+  if (!deps.notionToken) {
+    return undefined;
+  }
+  return {
+    notion: {
+      command: 'npx',
+      args: ['-y', '@notionhq/notion-mcp-server'],
+      env: { NOTION_TOKEN: deps.notionToken },
+    },
+  };
 }
 
 export function createClaudeSessionRunner(deps: CreateClaudeSessionRunnerDeps): ClaudeSessionRunner {
+  const mcpServers = buildMcpServers(deps);
+
   return {
     async sendMessage(chatId: number, userMessage: string): Promise<string> {
       const existingSessionId = deps.sessionStore.get(chatId);
@@ -26,6 +45,7 @@ export function createClaudeSessionRunner(deps: CreateClaudeSessionRunnerDeps): 
         options: {
           cwd: deps.workingDir,
           model: deps.model,
+          ...(mcpServers ? { mcpServers } : {}),
           // Isolate from the host user's own ~/.claude/settings.json (and any
           // project/local settings). Without this, a permissive rule there
           // (e.g. Bash(*) under an "auto" defaultMode) resolves tool calls
