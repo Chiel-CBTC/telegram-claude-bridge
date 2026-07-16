@@ -15,7 +15,8 @@ Chat with a Claude agent running on this server, from Telegram.
 
 - Send any message to chat with Claude. Context is kept per Telegram chat until you send `/reset`.
 - When Claude wants to do something risky (`git push`, `rm -rf`, `sudo`, writing outside
-  `/home/chiel`, ...), it sends an approval request with **Goedkeuren**/**Weigeren** buttons
+  `/home/chiel`, piping a downloaded script into a shell, reading/writing `.env`/`.pem`/SSH
+  key files, ...), it sends an approval request with **Goedkeuren**/**Weigeren** buttons
   and waits up to 15 minutes before auto-denying.
 - Only the Telegram user ID in `ALLOWED_TELEGRAM_USER_ID` can use the bot — everyone else is
   silently ignored.
@@ -24,6 +25,22 @@ Chat with a Claude agent running on this server, from Telegram.
 
 Edit `src/riskRules.ts` to change which Bash command patterns or file paths require
 confirmation, then rebuild: `docker compose up -d --build`.
+
+## Notion access (optional)
+
+To let the bot read/write your Notion workspace:
+
+1. Create an internal integration at [notion.so/my-integrations](https://www.notion.so/my-integrations)
+   and copy its token (starts with `ntn_`).
+2. In Notion, open each page or database you want the bot to reach, and share it with that
+   integration (`···` menu → Connections → add your integration). The bot only sees what's
+   explicitly shared — unlike your own claude.ai Notion connector, this token has no implicit
+   access to your whole workspace.
+3. Set `NOTION_TOKEN` in `.env`.
+4. `docker compose up -d --build`
+
+This runs the official `@notionhq/notion-mcp-server` as a local stdio process inside the
+container — no OAuth flow, independent of your claude.ai account's own Notion connection.
 
 ## Logs
 

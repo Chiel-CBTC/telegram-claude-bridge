@@ -55,4 +55,15 @@ describe('loadConfig', () => {
     const config = loadConfig(validEnv);
     expect(config.allowedTelegramUserId).toBe(123456);
   });
+
+  it('leaves notionToken undefined when NOTION_TOKEN is not set', () => {
+    const config = loadConfig(validEnv);
+    expect(config.notionToken).toBeUndefined();
+  });
+
+  it('picks up NOTION_TOKEN when set', () => {
+    const env = { ...validEnv, NOTION_TOKEN: 'ntn_test123' };
+    const config = loadConfig(env);
+    expect(config.notionToken).toBe('ntn_test123');
+  });
 });
