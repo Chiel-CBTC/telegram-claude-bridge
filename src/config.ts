@@ -1,5 +1,17 @@
 import 'dotenv/config';
 
+const DEFAULT_EXCLUDED_PLUGINS = ['caveman'];
+
+function parseExcludedPlugins(raw: string | undefined): string[] {
+  if (raw === undefined) {
+    return DEFAULT_EXCLUDED_PLUGINS;
+  }
+  return raw
+    .split(',')
+    .map((name) => name.trim())
+    .filter((name) => name.length > 0);
+}
+
 export interface Config {
   telegramBotToken: string;
   allowedTelegramUserId: number;
@@ -9,6 +21,7 @@ export interface Config {
   approvalTimeoutMs: number;
   sessionStorePath: string;
   notionToken?: string;
+  excludedPlugins: string[];
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -40,5 +53,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     approvalTimeoutMs: env.APPROVAL_TIMEOUT_MS ? Number(env.APPROVAL_TIMEOUT_MS) : 15 * 60 * 1000,
     sessionStorePath: env.SESSION_STORE_PATH?.trim() || './data/sessions.json',
     notionToken: env.NOTION_TOKEN?.trim() || undefined,
+    excludedPlugins: parseExcludedPlugins(env.EXCLUDED_PLUGINS),
   };
 }
