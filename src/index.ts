@@ -39,11 +39,22 @@ bot = createBot(config, claudeSessionRunner, approvalBroker);
 bot.launch();
 console.log('Telegram-Claude bridge gestart.');
 
+// Defense-in-depth for an unattended long-running bot: log instead of letting
+// an unexpected unhandled rejection take down the whole process (mirrors
+// bot.ts's bot.catch philosophy — log and continue).
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled promise rejection:', reason);
+});
+
 process.once('SIGINT', () => {
+  // Best-effort: closeAll() fires interrupt() calls without awaiting the SDK's
+  // ~2s graceful shutdown, which likely won't finish before exit — tini
+  // (init: true in docker-compose.yml) reaps any orphaned child processes.
   claudeSessionRunner.closeAll();
   bot.stop('SIGINT');
 });
 process.once('SIGTERM', () => {
+  // Best-effort shutdown; see the SIGINT handler above.
   claudeSessionRunner.closeAll();
   bot.stop('SIGTERM');
 });
