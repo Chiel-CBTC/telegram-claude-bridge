@@ -34,6 +34,7 @@ describe('loadConfig', () => {
     expect(config.claudeModel).toBe('claude-sonnet-5');
     expect(config.approvalTimeoutMs).toBe(15 * 60 * 1000);
     expect(config.sessionStorePath).toBe('./data/sessions.json');
+    expect(config.liveSessionIdleTimeoutMs).toBe(30 * 60 * 1000);
   });
 
   it('uses provided values when optional vars are set', () => {
@@ -43,12 +44,14 @@ describe('loadConfig', () => {
       CLAUDE_MODEL: 'claude-opus-4-8',
       APPROVAL_TIMEOUT_MS: '60000',
       SESSION_STORE_PATH: '/data/custom.json',
+      LIVE_SESSION_IDLE_TIMEOUT_MS: '900000',
     };
     const config = loadConfig(env);
     expect(config.workingDir).toBe('/home/chiel/git');
     expect(config.claudeModel).toBe('claude-opus-4-8');
     expect(config.approvalTimeoutMs).toBe(60000);
     expect(config.sessionStorePath).toBe('/data/custom.json');
+    expect(config.liveSessionIdleTimeoutMs).toBe(900000);
   });
 
   it('returns parsed allowedTelegramUserId as a number', () => {

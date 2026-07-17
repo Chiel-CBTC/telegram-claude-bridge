@@ -21,8 +21,23 @@ const runner = createClaudeSessionRunner({
   notifyApprovalNeeded: (chatId, approval) => {
     console.log(`[approval requested] chat ${chatId}: ${approval.description}`);
   },
+  liveSessionIdleTimeoutMs: 30 * 60 * 1000,
 });
 
 const chatId = 999;
-const reply = await runner.sendMessage(chatId, 'Say "hello from the smoke test" and nothing else.');
-console.log('Claude replied:', reply);
+
+const start1 = Date.now();
+const reply1 = await runner.sendMessage(chatId, 'Say "hello from the smoke test" and nothing else.');
+console.log(`Claude replied (${Date.now() - start1}ms):`, reply1);
+
+const start2 = Date.now();
+const reply2 = await runner.sendMessage(chatId, 'Now say "second message" and nothing else.');
+console.log(`Claude replied (${Date.now() - start2}ms):`, reply2);
+
+console.log(
+  'Expect the second message to be noticeably faster than the first ' +
+    '(warm live session, no new process/MCP-server spawn).'
+);
+
+runner.closeAll();
+process.exit(0);

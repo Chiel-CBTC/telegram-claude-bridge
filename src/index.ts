@@ -31,6 +31,7 @@ const claudeSessionRunner = createClaudeSessionRunner({
   },
   notionToken: config.notionToken,
   excludedPlugins: config.excludedPlugins,
+  liveSessionIdleTimeoutMs: config.liveSessionIdleTimeoutMs,
 });
 
 bot = createBot(config, claudeSessionRunner, approvalBroker);
@@ -38,5 +39,11 @@ bot = createBot(config, claudeSessionRunner, approvalBroker);
 bot.launch();
 console.log('Telegram-Claude bridge gestart.');
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+process.once('SIGINT', () => {
+  claudeSessionRunner.closeAll();
+  bot.stop('SIGINT');
+});
+process.once('SIGTERM', () => {
+  claudeSessionRunner.closeAll();
+  bot.stop('SIGTERM');
+});
