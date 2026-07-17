@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { createAsyncPushQueue, TurnReader } from '../src/liveSession';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { createAsyncPushQueue, TurnReader, IdleCloser } from '../src/liveSession';
 import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
 describe('createAsyncPushQueue', () => {
@@ -239,5 +239,74 @@ describe('TurnReader', () => {
 
     reader.handleMessage(resultMessage());
     expect(reader.hasPending()).toBe(false);
+  });
+});
+
+describe('IdleCloser', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('calls onIdle after the configured timeout with no further activity', () => {
+    const onIdle = vi.fn();
+    const closer = new IdleCloser(1000, onIdle);
+
+    closer.touch();
+    vi.advanceTimersByTime(999);
+    expect(onIdle).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(1);
+    expect(onIdle).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the timer on each touch(), delaying onIdle', () => {
+    const onIdle = vi.fn();
+    const closer = new IdleCloser(1000, onIdle);
+
+    closer.touch();
+    vi.advanceTimersByTime(700);
+    closer.touch();
+    vi.advanceTimersByTime(700);
+    expect(onIdle).not.toHaveBeenCalled();
+
+    vi.advanceTimersByTime(300);
+    expect(onIdle).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not call onIdle after cancel()', () => {
+    const onIdle = vi.fn();
+    const closer = new IdleCloser(1000, onIdle);
+
+    closer.touch();
+    closer.cancel();
+    vi.advanceTimersByTime(2000);
+
+    expect(onIdle).not.toHaveBeenCalled();
+  });
+
+  it('cancel() before any touch() is a no-op', () => {
+    const onIdle = vi.fn();
+    const closer = new IdleCloser(1000, onIdle);
+
+    expect(() => closer.cancel()).not.toThrow();
+    vi.advanceTimersByTime(2000);
+    expect(onIdle).not.toHaveBeenCalled();
+  });
+
+  it('calling touch() again after onIdle already fired schedules a fresh timeout', () => {
+    const onIdle = vi.fn();
+    const closer = new IdleCloser(1000, onIdle);
+
+    closer.touch();
+    vi.advanceTimersByTime(1000);
+    expect(onIdle).toHaveBeenCalledTimes(1);
+
+    closer.touch();
+    vi.advanceTimersByTime(1000);
+    expect(onIdle).toHaveBeenCalledTimes(2);
   });
 });

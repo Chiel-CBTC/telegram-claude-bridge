@@ -107,3 +107,27 @@ export class TurnReader {
     return this.pendingTurns.length > 0;
   }
 }
+
+export class IdleCloser {
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor(
+    private readonly timeoutMs: number,
+    private readonly onIdle: () => void
+  ) {}
+
+  touch(): void {
+    this.cancel();
+    this.timer = setTimeout(() => {
+      this.timer = undefined;
+      this.onIdle();
+    }, this.timeoutMs);
+  }
+
+  cancel(): void {
+    if (this.timer !== undefined) {
+      clearTimeout(this.timer);
+      this.timer = undefined;
+    }
+  }
+}
