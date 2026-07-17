@@ -212,6 +212,7 @@ export function createLiveSessionManager(deps: CreateLiveSessionManagerDeps): Li
     session.closed = true;
     session.idleCloser.cancel();
     sessions.delete(chatId);
+    session.queue.close();
     if (err !== undefined) {
       session.reader.failAll(err);
     }
@@ -290,7 +291,7 @@ export function createLiveSessionManager(deps: CreateLiveSessionManagerDeps): Li
             deps.sessionStore.set(chatId, message.session_id);
           }
           session.reader.handleMessage(message);
-          if (message.type === 'result') {
+          if (!session.closed && message.type === 'result') {
             session.idleCloser.touch();
           }
         }
