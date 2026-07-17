@@ -22,6 +22,7 @@ export interface Config {
   sessionStorePath: string;
   notionToken?: string;
   excludedPlugins: string[];
+  liveSessionIdleTimeoutMs: number;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
@@ -54,5 +55,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     sessionStorePath: env.SESSION_STORE_PATH?.trim() || './data/sessions.json',
     notionToken: env.NOTION_TOKEN?.trim() || undefined,
     excludedPlugins: parseExcludedPlugins(env.EXCLUDED_PLUGINS),
+    liveSessionIdleTimeoutMs: env.LIVE_SESSION_IDLE_TIMEOUT_MS
+      ? Number(env.LIVE_SESSION_IDLE_TIMEOUT_MS)
+      : 30 * 60 * 1000,
   };
 }
