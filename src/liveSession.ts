@@ -229,7 +229,13 @@ export function createLiveSessionManager(deps: CreateLiveSessionManagerDeps): Li
       session.idleCloser.touch();
       return;
     }
-    session.queue.close();
+    // Route through teardown so session.closed is set and the session is removed
+    // from the map SYNCHRONOUSLY with the queue close. Closing the queue directly
+    // (as this used to) left a ~2s window — the SDK's graceful subprocess
+    // shutdown after a queue close — during which the session still sat in the
+    // map with closed === false; a message arriving then would push into the
+    // already-closed queue and orphan an unhandled promise rejection.
+    teardown(chatId, session);
   }
 
   function startSession(chatId: number): LiveSession {
@@ -322,7 +328,8 @@ export function createLiveSessionManager(deps: CreateLiveSessionManagerDeps): Li
       session.reader.failNext(new Error('Sessie is gereset.'));
       void session.queryHandle.interrupt().catch(() => undefined);
     }
-    session.queue.close();
+    // teardown() closes the queue as one of its steps, so no explicit
+    // queue.close() is needed here.
     teardown(chatId, session);
   }
 
