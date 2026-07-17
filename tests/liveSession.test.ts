@@ -199,6 +199,37 @@ describe('TurnReader', () => {
     await expect(second).rejects.toThrow('session ended');
   });
 
+  it('does not leak partial text into the next turn after failNext', async () => {
+    const reader = new TurnReader();
+    const firstTurn = reader.waitForNextTurn();
+    reader.handleMessage(assistantText('a'));
+
+    const rejected = reader.failNext(new Error('boom'));
+
+    expect(rejected).toBe(true);
+    await expect(firstTurn).rejects.toThrow('boom');
+
+    const secondTurn = reader.waitForNextTurn();
+    reader.handleMessage(resultMessage());
+
+    await expect(secondTurn).resolves.toBe('');
+  });
+
+  it('does not leak partial text into the next turn after failAll', async () => {
+    const reader = new TurnReader();
+    const firstTurn = reader.waitForNextTurn();
+    reader.handleMessage(assistantText('a'));
+
+    reader.failAll(new Error('boom'));
+
+    await expect(firstTurn).rejects.toThrow('boom');
+
+    const secondTurn = reader.waitForNextTurn();
+    reader.handleMessage(resultMessage());
+
+    await expect(secondTurn).resolves.toBe('');
+  });
+
   it('hasPending reflects whether a turn is awaiting resolution', () => {
     const reader = new TurnReader();
     expect(reader.hasPending()).toBe(false);

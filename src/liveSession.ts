@@ -86,6 +86,7 @@ export class TurnReader {
   }
 
   failNext(err: unknown): boolean {
+    this.currentText = '';
     const turn = this.pendingTurns.shift();
     if (!turn) {
       return false;
@@ -95,6 +96,7 @@ export class TurnReader {
   }
 
   failAll(err: unknown): void {
+    this.currentText = '';
     while (this.pendingTurns.length > 0) {
       const turn = this.pendingTurns.shift();
       turn?.reject(err);
