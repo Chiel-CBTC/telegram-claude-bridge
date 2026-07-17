@@ -1,3 +1,5 @@
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
+
 export interface AsyncPushQueue<T> extends AsyncIterable<T> {
   push(item: T): void;
   close(): void;
@@ -50,4 +52,56 @@ class AsyncPushQueueImpl<T> implements AsyncPushQueue<T> {
 
 export function createAsyncPushQueue<T>(): AsyncPushQueue<T> {
   return new AsyncPushQueueImpl<T>();
+}
+
+interface PendingTurn {
+  resolve: (text: string) => void;
+  reject: (err: unknown) => void;
+}
+
+export class TurnReader {
+  private readonly pendingTurns: PendingTurn[] = [];
+  private currentText = '';
+
+  waitForNextTurn(): Promise<string> {
+    return new Promise((resolve, reject) => {
+      this.pendingTurns.push({ resolve, reject });
+    });
+  }
+
+  handleMessage(message: SDKMessage): void {
+    if (message.type === 'assistant') {
+      for (const block of message.message.content) {
+        if (block.type === 'text') {
+          this.currentText += block.text;
+        }
+      }
+    }
+    if (message.type === 'result') {
+      const text = this.currentText;
+      this.currentText = '';
+      const turn = this.pendingTurns.shift();
+      turn?.resolve(text);
+    }
+  }
+
+  failNext(err: unknown): boolean {
+    const turn = this.pendingTurns.shift();
+    if (!turn) {
+      return false;
+    }
+    turn.reject(err);
+    return true;
+  }
+
+  failAll(err: unknown): void {
+    while (this.pendingTurns.length > 0) {
+      const turn = this.pendingTurns.shift();
+      turn?.reject(err);
+    }
+  }
+
+  hasPending(): boolean {
+    return this.pendingTurns.length > 0;
+  }
 }

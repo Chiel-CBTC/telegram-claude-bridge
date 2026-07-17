@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { createAsyncPushQueue } from '../src/liveSession';
+import { createAsyncPushQueue, TurnReader } from '../src/liveSession';
+import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
 
 describe('createAsyncPushQueue', () => {
   it('yields an item pushed before iteration starts', async () => {
@@ -96,5 +97,116 @@ describe('createAsyncPushQueue', () => {
 
     await consume;
     expect(results).toEqual([1, 2]);
+  });
+});
+
+function assistantText(text: string): SDKMessage {
+  return {
+    type: 'assistant',
+    message: { content: [{ type: 'text', text }] },
+    parent_tool_use_id: null,
+    uuid: 'uuid-1',
+    session_id: 'session-1',
+  } as unknown as SDKMessage;
+}
+
+function resultMessage(): SDKMessage {
+  return {
+    type: 'result',
+    subtype: 'success',
+    session_id: 'session-1',
+  } as unknown as SDKMessage;
+}
+
+describe('TurnReader', () => {
+  it('resolves the pending turn with accumulated assistant text on result', async () => {
+    const reader = new TurnReader();
+    const turnPromise = reader.waitForNextTurn();
+
+    reader.handleMessage(assistantText('Hello'));
+    reader.handleMessage(assistantText(', world'));
+    reader.handleMessage(resultMessage());
+
+    await expect(turnPromise).resolves.toBe('Hello, world');
+  });
+
+  it('resolves an empty string when a turn has no assistant text blocks', async () => {
+    const reader = new TurnReader();
+    const turnPromise = reader.waitForNextTurn();
+
+    reader.handleMessage(resultMessage());
+
+    await expect(turnPromise).resolves.toBe('');
+  });
+
+  it('resolves turns in order for consecutive turns', async () => {
+    const reader = new TurnReader();
+    const firstTurn = reader.waitForNextTurn();
+
+    reader.handleMessage(assistantText('first'));
+    reader.handleMessage(resultMessage());
+
+    await expect(firstTurn).resolves.toBe('first');
+
+    const secondTurn = reader.waitForNextTurn();
+    reader.handleMessage(assistantText('second'));
+    reader.handleMessage(resultMessage());
+
+    await expect(secondTurn).resolves.toBe('second');
+  });
+
+  it('does not leak text from a completed turn into the next one', async () => {
+    const reader = new TurnReader();
+    const firstTurn = reader.waitForNextTurn();
+    reader.handleMessage(assistantText('first'));
+    reader.handleMessage(resultMessage());
+    await firstTurn;
+
+    const secondTurn = reader.waitForNextTurn();
+    reader.handleMessage(resultMessage());
+
+    await expect(secondTurn).resolves.toBe('');
+  });
+
+  it('ignores a result message with no pending turn instead of throwing', () => {
+    const reader = new TurnReader();
+    expect(() => reader.handleMessage(resultMessage())).not.toThrow();
+  });
+
+  it('failNext rejects the oldest pending turn and returns true', async () => {
+    const reader = new TurnReader();
+    const turnPromise = reader.waitForNextTurn();
+
+    const rejected = reader.failNext(new Error('boom'));
+
+    expect(rejected).toBe(true);
+    await expect(turnPromise).rejects.toThrow('boom');
+  });
+
+  it('failNext returns false when there is no pending turn', () => {
+    const reader = new TurnReader();
+    expect(reader.failNext(new Error('boom'))).toBe(false);
+  });
+
+  it('failAll rejects every pending turn', async () => {
+    const reader = new TurnReader();
+    const first = reader.waitForNextTurn();
+    const second = reader.waitForNextTurn();
+
+    reader.failAll(new Error('session ended'));
+
+    await expect(first).rejects.toThrow('session ended');
+    await expect(second).rejects.toThrow('session ended');
+  });
+
+  it('hasPending reflects whether a turn is awaiting resolution', () => {
+    const reader = new TurnReader();
+    expect(reader.hasPending()).toBe(false);
+
+    reader.waitForNextTurn();
+    expect(reader.hasPending()).toBe(true);
+
+    reader.handleMessage(resultMessage());
+    expect(reader.hasPending()).toBe(false);
   });
 });
